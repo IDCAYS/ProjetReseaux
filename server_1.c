@@ -22,6 +22,9 @@ Quitter le tchat : .exit
 #define MAX_CLIENTS 10
 #define MAX_NAME_LENGTH 50
 
+// Garantir qu'un seul thread accesde au fichier à un momment donné
+pthread_mutex_t file_mutex;
+
 struct Client {
     int socket;
     char pseudonyme[MAX_NAME_LENGTH];
@@ -232,7 +235,7 @@ void leaveChannel(int socket) {
     char error_message[1024] = "Vous n'êtes dans aucun canal.\n";
     write(socket, error_message, strlen(error_message));
 }
-
+//
 void *handleClient(void *arg) {
     int sock = *(int *)arg;
     char buffer[1024];
@@ -248,6 +251,10 @@ void *handleClient(void *arg) {
             strcpy(pseudonyme, buffer);
             addClient(sock, pseudonyme);
             printf("Le client %s s'est connecté.\n", pseudonyme);
+
+            // Sauvegarder le message dans l'historique avec nom et timestamp
+            save_message(pseudonyme, buffer);
+            printf(". SAVE \n");
             // Envoi de la liste des clients connectés au client qui vient de se connecter
             char liste_clients[1024] = "Clients connectés :\n";
             for (int i = 0; i < nb_clients; ++i) {
@@ -340,6 +347,10 @@ void *handleClient(void *arg) {
                 }
             }
         }
+
+     // Sauvegarder le message dans l'historique avec nom et timestamp
+        save_message(pseudonyme, buffer);
+        printf(". SAVE \n");
     }
         /*if (strcmp(buffer, ".exit") == 0) {
             char exit_message[1024];
@@ -364,6 +375,9 @@ int main() {
     int socket_descriptor, nouv_socket_descriptor;
     struct sockaddr_in adresse_locale, adresse_client;
     socklen_t longueur_adresse_courante = sizeof(adresse_client);
+
+    // Mutex pour synchroniser l'écriture dans l'historique
+    pthread_mutex_init(&file_mutex, NULL);
 
     socket_descriptor = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_descriptor == -1) {
@@ -408,5 +422,31 @@ int main() {
     }
 
     close(socket_descriptor);
+
+        // Fermeture du mutex
+    pthread_mutex_destroy(&file_mutex);
     return 0;
+}
+
+// Fonction pour sauvegarder un message dans un fichier historique avec nom et timestamp
+void save_message(const char *pseudonyme, const char *message) {
+    pthread_mutex_lock(&file_mutex);  // Verrouiller l'accès au fichier
+
+    // Obtenir l'heure actuelle
+    time_t now = time(NULL);
+    struct tm *t = localtime(&now);
+    char timestamp[64];
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", t);
+
+    // Ouvrir le fichier et écrire le message formaté
+    FILE *file = fopen("historique.txt", "a");
+    if (file == NULL) {
+        perror("fopen");
+        printf("fichier non disponible");
+    } else {
+        fprintf(file, "[%s] %s : %s\n", timestamp, pseudonyme, message);
+        fclose(file);
+    }
+
+    pthread_mutex_unlock(&file_mutex);  // Déverrouiller l'accès au fichier
 }
