@@ -266,6 +266,7 @@ void *handleClient(void *arg) {
             strcat(command_list, "\033[34m Quitter le tchat : \033[0m .exit\n");
             strcat(command_list, "\033[34m Rejoindre un canal : \033[0m .join 'nom du channel'\n");
             strcat(command_list, "\033[34m Afficher tous les canaux disponibles : \033[0m .channels\n");
+            strcat(command_list, "\033[34m Liste des personnes connectées dans son channel : \033[0m .chanListe\n");
             strcat(command_list, "\033[34m Quitter le canal : \033[0m .leave\n");
             strcat(command_list, "\033[34m Écrire en rouge : \033[0m /message\n");
             write(sock, command_list, strlen(command_list));
@@ -314,6 +315,32 @@ void *handleClient(void *arg) {
             char channelList[1024];
             getAvailableChannels(channelList);
             write(sock, channelList, strlen(channelList));
+        } else if (strcmp(buffer, ".chanListe") == 0) {
+            // Rechercher le canal auquel appartient le client
+            bool clientFoundInChannel = false;
+            char clients_in_channel[1024] = "Clients dans le canal :\n";
+
+            for (int i = 0; i < nb_channels; i++) {
+                for (int j = 0; j < channels[i].nb_clients; j++) {
+                    if (channels[i].clients[j]->socket == sock) {
+                        clientFoundInChannel = true;
+                        // Ajouter les pseudonymes des clients connectés au canal
+                        for (int k = 0; k < channels[i].nb_clients; k++) {
+                            strcat(clients_in_channel, channels[i].clients[k]->pseudonyme);
+                            strcat(clients_in_channel, "\n");
+                        }
+                        break;
+                    }
+                }
+                if (clientFoundInChannel) break;
+            }
+
+            if (clientFoundInChannel) {
+                write(sock, clients_in_channel, strlen(clients_in_channel));
+            } else {
+                char error_message[1024] = "Vous n'êtes dans aucun canal.\n";
+                write(sock, error_message, strlen(error_message));
+            }
         } else if (strcmp(buffer, ".leave") == 0) {
             leaveChannel(sock);
             clientInChannel = false;
