@@ -114,6 +114,7 @@ void removeClient(int socket) {
         }
     }
 }
+
 void updateConnectedClients() {
     int index = 0;
     for (int i = 0; i < nb_clients; ++i) {
@@ -238,6 +239,7 @@ void *handleClient(void *arg) {
     int bytes_received;
     char pseudonyme[MAX_NAME_LENGTH];
     bool pseudonyme_saisi = false;
+    bool clientInChannel = false;
        
     while ((bytes_received = read(sock, buffer, sizeof(buffer))) > 0) {
         buffer[bytes_received] = '\0';
@@ -307,22 +309,33 @@ void *handleClient(void *arg) {
         } else if (strncmp(buffer, ".join ", 6) == 0) {
             char *channel_name = buffer + 6;
             joinChannel(sock, channel_name, pseudonyme);
+            clientInChannel = true;
         } else if (strcmp(buffer, ".channels") == 0) {
             char channelList[1024];
             getAvailableChannels(channelList);
             write(sock, channelList, strlen(channelList));
         } else if (strcmp(buffer, ".leave") == 0) {
             leaveChannel(sock);
+            clientInChannel = false;
         } else {
             char messageAEnvoyer[1024 + MAX_NAME_LENGTH + 20];
             sprintf(messageAEnvoyer, "\n%s : %s\n", pseudonyme, buffer);
 
-            // Envoie le message aux clients dans le même canal
-            for (int i = 0; i < nb_channels; i++) {
-                for (int j = 0; j < channels[i].nb_clients; j++) {
-                    if (channels[i].clients[j]->socket == sock) {
-                        sendMessageToChannel(&channels[i], messageAEnvoyer, sock);
-                        break;
+            if (clientInChannel == true){
+                // Envoie le message aux clients dans le même canal
+                for (int i = 0; i < nb_channels; i++) {
+                    for (int j = 0; j < channels[i].nb_clients; j++) {
+                        if (channels[i].clients[j]->socket == sock) {
+                            sendMessageToChannel(&channels[i], messageAEnvoyer, sock);
+                            break;
+                        }
+                    }
+                }
+            } else {
+                write(sock, messageAEnvoyer, strlen(messageAEnvoyer));
+                for (int i = 0; i < nb_clients; ++i) {
+                    if (clients[i].socket != sock) {
+                        write(clients[i].socket, messageAEnvoyer, strlen(messageAEnvoyer));
                     }
                 }
             }
