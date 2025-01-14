@@ -8,15 +8,6 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <stdbool.h>
-/*
-cd /mnt/c/Users/lplace/Desktop/TP\ réseaux
-
-Message privé : !pseudo message
-Liste des personnes connectés : .liste
-Quitter le tchat : .exit
-Écrire en rouge : /message
-
-*/
 
 #define PORT 5001
 #define MAX_CLIENTS 10
@@ -235,7 +226,7 @@ void leaveChannel(int socket) {
     char error_message[1024] = "Vous n'êtes dans aucun canal.\n";
     write(socket, error_message, strlen(error_message));
 }
-//
+
 void *handleClient(void *arg) {
     int sock = *(int *)arg;
     char buffer[1024];
@@ -251,7 +242,10 @@ void *handleClient(void *arg) {
             strcpy(pseudonyme, buffer);
             addClient(sock, pseudonyme);
             printf("Le client %s s'est connecté.\n", pseudonyme);
-
+            // Message de bienvenue au client qui vient de se connecter
+            char bienvenue[1024];
+            sprintf(bienvenue, "Bienvenue sur le chat, %s !\n", pseudonyme);
+            write(sock, bienvenue, strlen(bienvenue));
             // Sauvegarder le message dans l'historique avec nom et timestamp
             save_message(pseudonyme, buffer);
             printf(". SAVE \n");

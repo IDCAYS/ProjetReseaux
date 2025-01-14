@@ -8,14 +8,21 @@ class ChatClient:
     def __init__(self, master):
         self.master = master
         self.master.title("Client de Chat")
+        self.master.geometry("800x600")  # Taille par défaut
+        
+        # Configurer la grille pour un redimensionnement dynamique
+        self.master.grid_rowconfigure(0, weight=1)  # Première ligne (zone de chat) extensible
+        self.master.grid_rowconfigure(1, weight=0)  # Deuxième ligne (zone de saisie) fixe
+        self.master.grid_columnconfigure(0, weight=1)  # Première colonne extensible
+        self.master.grid_columnconfigure(1, weight=0)  # Deuxième colonne (bouton) fixe
         
         # Zone d'affichage des messages
         self.chat_display = scrolledtext.ScrolledText(master, state='disabled', width=50, height=20, wrap='word')
-        self.chat_display.grid(row=0, column=0, columnspan=2, padx=10, pady=10)
+        self.chat_display.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
 
         # Champ de saisie
         self.entry_message = tk.Entry(master, width=40)
-        self.entry_message.grid(row=1, column=0, padx=10, pady=10)
+        self.entry_message.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
         self.entry_message.bind("<Return>", self.send_message)
 
         # Bouton d'envoi
